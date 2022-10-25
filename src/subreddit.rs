@@ -7,6 +7,9 @@ use askama::Template;
 use cookie::Cookie;
 use hyper::{Body, Request, Response};
 use time::{Duration, OffsetDateTime};
+use std::fs;
+use std::fs::File;
+use std::path::Path;
 
 // STRUCTS
 #[derive(Template)]
@@ -52,7 +55,17 @@ struct WallTemplate {
 pub async fn community(req: Request<Body>) -> Result<Response<Body>, String> {
 	// Build Reddit API path
 	let root = req.uri().path() == "/";
-	let subscribed = setting(&req, "subscriptions");
+	let f = File::open("./subscriptions.txt");
+	let mut subscribed = String::from("");
+	match f {
+		Ok(file)=> {
+			subscribed = fs::read_to_string("./subscriptions.txt").expect("Unable to read file");
+		},
+		Err(_error)=> {
+			subscribed = setting(&req, "subscriptions");
+		}
+	}
+	
 	let front_page = setting(&req, "front_page");
 	let post_sort = req.cookie("post_sort").map_or_else(|| "hot".to_string(), |c| c.value().to_string());
 	let sort = req.param("sort").unwrap_or_else(|| req.param("id").unwrap_or(post_sort));
@@ -239,6 +252,28 @@ pub async fn subscriptions_filters(req: Request<Body>) -> Result<Response<Body>,
 
 		// Modify sub list based on action
 		if action.contains(&"subscribe".to_string()) && !sub_list.contains(&part.to_owned()) {
+			//Create new file or open it
+			let f = File::open("./subscriptions.txt");
+			match f {
+				Ok(file)=> {
+					let data = fs::read_to_string("./subscriptions.txt").expect("Unable to read file");
+					let mut newData = String::from("");
+					if data.eq("") {
+						newData = remove_whitespace(&part.to_owned());
+					}else{
+						newData = remove_whitespace(&data) + "+" + &remove_whitespace(&part.to_owned());
+					}
+					
+					fs::write("./subscriptions.txt", newData).expect("Unable to write file");
+				},
+				Err(_error)=> {
+					let path = Path::new("./subscriptions.txt");
+					fs::write("./subscriptions.txt", &part.to_owned()).expect("Unable to write file");
+				}
+   			}
+			
+
+
 			// Add each sub name to the subscribed list
 			sub_list.push(part.to_owned());
 			filters.retain(|s| s.to_lowercase() != part.to_lowercase());
@@ -247,6 +282,34 @@ pub async fn subscriptions_filters(req: Request<Body>) -> Result<Response<Body>,
 			filters.sort_by_key(|a| a.to_lowercase());
 		} else if action.contains(&"unsubscribe".to_string()) {
 			// Remove sub name from subscribed list
+			let f = File::open("subscriptions.txt");
+			match f {
+				Ok(file)=> {
+					let data = fs::read_to_string("./subscriptions.txt").expect("Unable to read file");
+					if data.contains("+") {
+						let mut newString = String::from("");
+						let subs = data.split("+");
+						for singlesub in subs{
+							if!singlesub.eq(&part.to_owned()){
+								if newString.eq("") {
+									newString = remove_whitespace(singlesub);
+								}else{
+									newString = remove_whitespace(&newString) +"+"+ &remove_whitespace(singlesub);
+								}
+								
+							}
+						}
+						
+						fs::write("./subscriptions.txt", newString).expect("Unable to write file");
+					}else{
+						//Last sub removed
+						fs::write("./subscriptions.txt", "").expect("Unable to write file");
+					}
+					
+				},
+				Err(_error)=> {}
+   			}
+
 			sub_list.retain(|s| s.to_lowercase() != part.to_lowercase());
 		} else if action.contains(&"filter".to_string()) && !filters.contains(&part.to_owned()) {
 			// Add each sub name to the filtered list
@@ -293,6 +356,11 @@ pub async fn subscriptions_filters(req: Request<Body>) -> Result<Response<Body>,
 
 	Ok(response)
 }
+
+pub fn remove_whitespace(s: &str) -> String {
+    s.split_whitespace().collect::<String>()
+}
+
 
 pub async fn wiki(req: Request<Body>) -> Result<Response<Body>, String> {
 	let sub = req.param("sub").unwrap_or_else(|| "reddit.com".to_string());

@@ -13,6 +13,9 @@ use std::env;
 use std::str::FromStr;
 use time::{macros::format_description, Duration, OffsetDateTime};
 use url::Url;
+use std::fs;
+use std::fs::File;
+use std::path::Path;
 
 /// Identifies whether or not the page is a subreddit, a user page, or a post.
 /// This is used by the NSFW landing template to determine the mesage to convey
@@ -510,6 +513,18 @@ impl Preferences {
 			let chunks: Vec<&str> = file.as_ref().split(".css").collect();
 			themes.push(chunks[0].to_owned());
 		}
+
+		let f = File::open("./subscriptions.txt");
+		let mut subscribed = String::from("");
+		match f {
+			Ok(file)=> {
+				subscribed = fs::read_to_string("./subscriptions.txt").expect("Unable to read file");
+			},
+			Err(_error)=> {
+				subscribed = setting(&req, "subscriptions");
+			}
+		}
+
 		Self {
 			available_themes: themes,
 			theme: setting(&req, "theme"),
@@ -523,7 +538,7 @@ impl Preferences {
 			autoplay_videos: setting(&req, "autoplay_videos"),
 			comment_sort: setting(&req, "comment_sort"),
 			post_sort: setting(&req, "post_sort"),
-			subscriptions: setting(&req, "subscriptions").split('+').map(String::from).filter(|s| !s.is_empty()).collect(),
+			subscriptions: subscribed.split('+').map(String::from).filter(|s| !s.is_empty()).collect(),
 			filters: setting(&req, "filters").split('+').map(String::from).filter(|s| !s.is_empty()).collect(),
 		}
 	}
