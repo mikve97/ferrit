@@ -23,9 +23,6 @@ COPY --from=builder /etc/ssl/certs /etc/ssl/certs
 # Copy our build
 COPY --from=builder /ferrit/target/x86_64-unknown-linux-musl/release/ferrit /usr/local/bin/ferrit
 
-# Use an unprivileged user.
-RUN adduser --home /nonexistent --no-create-home --disabled-password ferrit
-USER ferrit
 
 # Tell Docker to expose port 8080
 EXPOSE 8080

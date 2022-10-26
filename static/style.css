@@ -1415,7 +1415,7 @@ td, th {
 	.created { width: 100%; }
 
 	.comment_score {
-		min-width: 32px;
+		width: auto;
 		height: 20px;
 		font-size: 15px;
 		padding: 7px 0px;

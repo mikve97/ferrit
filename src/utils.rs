@@ -514,11 +514,11 @@ impl Preferences {
 			themes.push(chunks[0].to_owned());
 		}
 
-		let f = File::open("./subscriptions.txt");
+		let f = File::open("./ferrit/subscriptions.txt");
 		let mut subscribed = String::from("");
 		match f {
 			Ok(file)=> {
-				subscribed = fs::read_to_string("./subscriptions.txt").expect("Unable to read file");
+				subscribed = fs::read_to_string("./ferrit/subscriptions.txt").expect("Unable to read file");
 			},
 			Err(_error)=> {
 				subscribed = setting(&req, "subscriptions");
@@ -902,6 +902,40 @@ pub async fn nsfw_landing(req: Request<Body>) -> Result<Response<Body>, String> 
 
 	Ok(Response::builder().status(403).header("content-type", "text/html").body(body.into()).unwrap_or_default())
 }
+
+pub fn read_from_file(path: &str) -> std::string::String {
+	let f = File::open(path);
+	match f {
+		Ok(file)=> {
+			return fs::read_to_string(path).expect("Unable to read file");
+		},
+		Err(_error)=> {
+			return String::from("");
+		}
+	}
+}
+
+pub fn write_to_file(path: &str, dataToAdd: &str) -> () {
+	let f = File::open(path);
+	match f {
+		Ok(file)=> {
+			let data = fs::read_to_string(path).expect("Unable to read file");
+			let new_data = remove_whitespace(dataToAdd);
+
+			fs::write(path, new_data).expect("Unable to write file");
+		},
+		Err(_error)=> {
+			//Create file if it does not exist.
+			let path = Path::new(path);
+			fs::write(path, dataToAdd).expect("Unable to write file");
+		}
+	}
+}
+
+pub fn remove_whitespace(s: &str) -> String {
+    s.split_whitespace().collect::<String>()
+}
+
 
 #[cfg(test)]
 mod tests {
